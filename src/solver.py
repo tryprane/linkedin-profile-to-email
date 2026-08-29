@@ -13,8 +13,6 @@ class TurnstileSolver:
         self.page_dir = os.path.join(self.base_dir, 'page')
         self.cert_file = os.path.join(self.page_dir, 'cert.crt')
         self.key_file = os.path.join(self.page_dir, 'cert.key')
-        self.cache_dir = os.path.join(self.base_dir, '.chrome_cache')
-        os.makedirs(self.cache_dir, exist_ok=True)
         self.server = None
         self.server_thread = None
 
@@ -63,31 +61,24 @@ class TurnstileSolver:
                 print(f"[solver] Error during page action: {e}")
 
         try:
-            print("[solver] Launching Scrapling StealthyFetcher to solve Turnstile...")
+            print("[solver] Launching Scrapling StealthyFetcher with solve_cloudflare=True...")
+            extra_flags = [
+                f'--host-resolver-rules=MAP tools.mailmeteor.com 127.0.0.1:{self.port}, EXCLUDE challenges.cloudflare.com',
+                f'--proxy-bypass-list=127.0.0.1;localhost;tools.mailmeteor.com;tools.mailmeteor.com:{self.port}',
+                '--ignore-certificate-errors',
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+            ]
+
             fetch_kwargs = {
-                "google_search": False,
-                "additional_args": {
-                    'args': [
-                        f'--host-resolver-rules=MAP tools.mailmeteor.com 127.0.0.1:{self.port}, EXCLUDE challenges.cloudflare.com',
-                        f'--proxy-bypass-list=127.0.0.1;localhost;tools.mailmeteor.com;tools.mailmeteor.com:{self.port}',
-                        '--disable-background-networking',
-                        '--disable-component-update',
-                        '--disable-sync',
-                        '--disable-default-apps',
-                        '--disable-features=OptimizationHints,SafeBrowsing',
-                        '--safebrowsing-disable-auto-update',
-                        '--disable-client-side-phishing-detection',
-                        '--no-first-run',
-                        '--no-default-browser-check',
-                        f'--disk-cache-dir={self.cache_dir}',
-                        '--disk-cache-size=104857600',
-                        '--ignore-certificate-errors',
-                        '--no-sandbox',
-                    ]
-                },
+                "headless": True,
+                "solve_cloudflare": True,
+                "extra_flags": tuple(extra_flags),
                 "page_action": on_page_ready,
                 "timeout": timeout * 1000
             }
+
             if proxy_url:
                 bypass_list = f"127.0.0.1,localhost,tools.mailmeteor.com,tools.mailmeteor.com:{self.port}"
                 if "@" in proxy_url:
