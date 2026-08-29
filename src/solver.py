@@ -13,6 +13,8 @@ class TurnstileSolver:
         self.page_dir = os.path.join(self.base_dir, 'page')
         self.cert_file = os.path.join(self.page_dir, 'cert.crt')
         self.key_file = os.path.join(self.page_dir, 'cert.key')
+        self.cache_dir = os.path.join(self.base_dir, '.chrome_cache')
+        os.makedirs(self.cache_dir, exist_ok=True)
         self.server = None
         self.server_thread = None
 
@@ -33,20 +35,27 @@ class TurnstileSolver:
             self.server.shutdown()
             print("[solver] Embedded HTTPS server stopped.")
 
-    def solve(self, proxy_url=None, timeout=30):
+    def solve(self, linkedin_url="", timeout=30):
         self.start_local_server()
         solved_token = None
 
         def on_page_ready(page):
             nonlocal solved_token
             try:
-                # Wait directly for the solved token (Scrapling auto-solve or callback)
+                if linkedin_url:
+                    try:
+                        page.fill('#linkedin_url', linkedin_url)
+                    except Exception:
+                        pass
+
+                page.wait_for_function("document.getElementById('wstat') && document.getElementById('wstat').textContent.includes('ready')", timeout=10000)
+
                 page.wait_for_function("""() => Boolean(
                     (document.getElementById('widget') && document.getElementById('widget').getAttribute('data-token')) ||
                     (document.querySelector('[name="cf-turnstile-response"]') && document.querySelector('[name="cf-turnstile-response"]').value) ||
                     window.__solved_token__ ||
                     window.turnstileToken ||
-                    (window.turnstile && typeof widgetId !== 'undefined' && window.turnstile.getResponse(widgetId))
+                    window.lastSolvedToken
                 )""", timeout=20000)
 
                 solved_token = page.evaluate("""() => (
@@ -54,36 +63,28 @@ class TurnstileSolver:
                     (document.querySelector('[name="cf-turnstile-response"]') && document.querySelector('[name="cf-turnstile-response"]').value) ||
                     window.__solved_token__ ||
                     window.turnstileToken ||
+                    window.lastSolvedToken ||
                     (window.turnstile && typeof widgetId !== 'undefined' ? window.turnstile.getResponse(widgetId) : null)
                 )""")
             except Exception as e:
                 print(f"[solver] Error during page action: {e}")
 
         try:
-            print("[solver] Launching Scrapling StealthyFetcher with solve_cloudflare=True...")
-            extra_flags = [
-                f'--host-resolver-rules=MAP tools.mailmeteor.com 127.0.0.1:{self.port}, EXCLUDE challenges.cloudflare.com',
-                f'--proxy-bypass-list=127.0.0.1;localhost;tools.mailmeteor.com;tools.mailmeteor.com:{self.port}',
-                '--ignore-certificate-errors',
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-            ]
-
-            fetch_kwargs = {
-                "headless": True,
-                "solve_cloudflare": True,
-                "extra_flags": tuple(extra_flags),
-                "page_action": on_page_ready,
-                "timeout": timeout * 1000
-            }
-
-            if proxy_url:
-                fetch_kwargs["proxy"] = proxy_url
-
+            print("[solver] Launching Scrapling StealthyFetcher to solve Turnstile challenge...")
             StealthyFetcher.fetch(
                 f'https://tools.mailmeteor.com:{self.port}',
-                **fetch_kwargs
+                google_search=False,
+                additional_args={
+                    'args': [
+                        f'--host-resolver-rules=MAP tools.mailmeteor.com 127.0.0.1:{self.port}, EXCLUDE challenges.cloudflare.com',
+                        f'--disk-cache-dir={self.cache_dir}',
+                        '--disk-cache-size=104857600',
+                        '--ignore-certificate-errors',
+                        '--no-sandbox',
+                    ]
+                },
+                page_action=on_page_ready,
+                timeout=timeout * 1000
             )
         except Exception as err:
             print(f"[solver] Fetcher error: {err}")

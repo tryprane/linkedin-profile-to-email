@@ -1,62 +1,355 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Turnstile Solver</title>
+  <title>Turnstile hostname check</title>
+  <style>
+    :root {
+      --bg: #fbfbfc;
+      --fg: #16181d;
+      --mut: #6b7280;
+      --line: #e4e7eb;
+      --card: #fff;
+      --ok: #0d7a52;
+      --bad: #c0322c;
+      --acc: #f6821f
+    }
+
+    @media(prefers-color-scheme:dark) {
+      :root {
+        --bg: #0f1116;
+        --fg: #e7eaee;
+        --mut: #98a1ab;
+        --line: #262b33;
+        --card: #161a20;
+        --ok: #3ddc97;
+        --bad: #ff7b72
+      }
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif
+    }
+
+    main {
+      width: min(620px, 100% - 28px);
+      margin: 0 auto;
+      padding: 44px 0 72px
+    }
+
+    h1 {
+      font-size: 19px;
+      margin: 0 0 5px;
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    h1::before {
+      content: "";
+      width: 4px;
+      height: 19px;
+      background: var(--acc);
+      border-radius: 2px
+    }
+
+    p.sub {
+      margin: 0 0 22px;
+      color: var(--mut);
+      font-size: 13px
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 15px 16px;
+      margin-bottom: 13px
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 14px;
+      padding: 7px 0;
+      font-size: 13px;
+      border-bottom: 1px solid var(--line)
+    }
+
+    .row:first-child {
+      padding-top: 0
+    }
+
+    .row:last-child {
+      border-bottom: 0;
+      padding-bottom: 0
+    }
+
+    .row span {
+      color: var(--mut);
+      white-space: nowrap
+    }
+
+    .row b {
+      font: 500 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+      text-align: right;
+      overflow-wrap: anywhere
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--mut);
+      margin-bottom: 6px
+    }
+
+    input {
+      width: 100%;
+      padding: 9px 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--bg);
+      color: var(--fg);
+      font: 12.5px ui-monospace, Menlo, monospace
+    }
+
+    #widget {
+      min-height: 65px;
+      margin: 10px 0;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 12px;
+      padding: 11px;
+      border: 0;
+      border-radius: 7px;
+      background: var(--fg);
+      color: var(--bg);
+      font: 600 14px ui-sans-serif, system-ui;
+      cursor: pointer
+    }
+
+    button:disabled {
+      opacity: .45;
+      cursor: not-allowed
+    }
+
+    pre {
+      margin: 13px 0 0;
+      padding: 12px;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      font: 12px/1.5 ui-monospace, Menlo, monospace;
+      overflow-x: auto
+    }
+
+    .verdict {
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 10px
+    }
+
+    .ok {
+      color: var(--ok)
+    }
+
+    .bad {
+      color: var(--bad)
+    }
+  </style>
 </head>
-<body style="font-family: sans-serif; padding: 20px;">
-  <div id="wstat">initializing...</div>
-  <div id="widget"></div>
+
+<body>
+  <main>
+    <h1>Turnstile hostname check</h1>
+    <p class="sub">Invisible widget — no checkbox, no spinner. The challenge runs on click, then the token is verified
+      by a local backend behind a Cloudflare Tunnel.</p>
+
+    <div class="card">
+      <div class="row"><span>Page hostname</span><b id="host">–</b></div>
+      <div class="row"><span>Widget allowed on</span><b>turn.prane.one (+ subdomains)</b></div>
+      <div class="row"><span>Widget mode</span><b>invisible</b></div>
+      <div class="row"><span>Sitekey</span><b id="key">–</b></div>
+      <div class="row"><span>Action</span><b id="act">–</b></div>
+      <div class="row"><span>Status</span><b id="wstat">loading…</b></div>
+    </div>
+
+    <div class="card">
+      <label for="linkedin_url">LinkedIn Profile URL</label>
+      <input id="linkedin_url" value="https://www.linkedin.com/in/satyanadella" spellcheck="false" autocapitalize="off">
+      <label for="api" style="margin-top: 10px;">Verify backend (POST /verify)</label>
+      <input id="api" spellcheck="false" autocapitalize="off">
+      <div id="widget"></div>
+      <button id="go" disabled>Run challenge and verify</button>
+    </div>
+
+    <div class="card" id="out" hidden>
+      <div class="verdict" id="verdict"></div>
+      <pre id="raw"></pre>
+    </div>
+  </main>
 
   <script>
     window.turnstileToken = null;
-    window.__solved_token__ = null;
+    window.lastSolvedToken = null;
+    window.apiResponse = null;
 
     const CONFIG = {
       sitekey: '0x4AAAAAAAe7i7oicz-TnMTr',
-      action: 'emailfinderlinkedin'
+      action: 'emailfinderlinkedin',
+      api: 'https://tools.mailmeteor.com/api/email-finder/linkedin'
     };
 
+    const $ = (id) => document.getElementById(id);
+    const api = $('api');
     let widgetId = null;
+    let busy = false;
 
-    function status(text) {
-      const el = document.getElementById('wstat');
-      if (el) el.textContent = text;
-      console.log('[Turnstile Status]', text);
+    $('host').textContent = location.hostname || '(file)';
+    $('key').textContent = CONFIG.sitekey;
+    $('act').textContent = CONFIG.action;
+    api.value = CONFIG.api;
+    api.addEventListener('change', () => localStorage.setItem('verify-api', api.value.trim()));
+
+    function status(text, cls) {
+      const el = $('wstat');
+      el.textContent = text;
+      el.className = cls || '';
+      console.log('[Turnstile Status]', text, cls || '');
     }
 
+    function done() {
+      busy = false;
+      $('go').disabled = false;
+      if (window.turnstile && widgetId !== null) turnstile.reset(widgetId);
+    }
+
+    // Invisible widget: nothing renders and no challenge runs until execute() is
+    // called, so the button drives the whole flow.
     window.onTurnstileLoad = () => {
       console.log('[onTurnstileLoad] sitekey:', CONFIG.sitekey, 'action:', CONFIG.action);
-      status('ready');
+      widgetId = turnstile.render('#widget', {
+        sitekey: CONFIG.sitekey,
+        action: CONFIG.action,
+        theme: 'light',
+        callback: (token) => {
+          console.log('[Turnstile Callback] Token acquired:', token.substring(0, 25) + '...');
+          window.__solved_token__ = token;
+          window.turnstileToken = token;
+          window.lastSolvedToken = token;
+          if ($('widget')) $('widget').setAttribute('data-token', token);
+          status('token acquired', 'ok');
+          verify(token);
+        },
+        'expired-callback': () => {
+          console.log('[Turnstile Expired]');
+          status('token expired');
+          done();
+        },
+        'error-callback': (code) => {
+          console.error('[Turnstile Error Callback] Code:', code);
+          status(code === '110200'
+            ? code + ' — domain not authorized for sitekey'
+            : 'error ' + code, 'bad');
+          done();
+          return true;
+        }
+      });
+      status('ready', 'ok');
+      $('go').disabled = false;
+    };
+
+    $('go').addEventListener('click', () => {
+      if (window.__solved_token__) {
+        verify(window.__solved_token__);
+        return;
+      }
+      if (busy || widgetId === null) return;
+      busy = true;
+      $('go').disabled = true;
+      status('running challenge…');
       try {
-        widgetId = turnstile.render('#widget', {
-          sitekey: CONFIG.sitekey,
-          action: CONFIG.action,
-          theme: 'light',
-          callback: (token) => {
-            console.log('[Turnstile Callback] Token acquired:', token.substring(0, 25) + '...');
-            window.__solved_token__ = token;
-            window.turnstileToken = token;
-            const w = document.getElementById('widget');
-            if (w) w.setAttribute('data-token', token);
-            status('token acquired');
-          },
-          'expired-callback': () => {
-            console.log('[Turnstile Expired]');
-            status('token expired');
-          },
-          'error-callback': (code) => {
-            console.error('[Turnstile Error Callback] Code:', code);
-            status('error ' + code);
-            return true;
-          }
-        });
-      } catch (err) {
-        console.error('[Turnstile Render Error]', err);
+        turnstile.execute(widgetId);
+      } catch (e) {
+        console.error('[Turnstile Execute Error]', e);
+      }
+    });
+
+    window.resetAndSolve = () => {
+      console.log('[resetAndSolve] Resetting Turnstile widget for new token...');
+      window.__solved_token__ = null;
+      window.turnstileToken = null;
+      window.lastSolvedToken = null;
+      if ($('widget')) $('widget').removeAttribute('data-token');
+      if (window.turnstile && widgetId !== null) {
+        turnstile.reset(widgetId);
+        turnstile.execute(widgetId);
       }
     };
+
+    async function verify(token) {
+      window.__solved_token__ = token;
+      window.turnstileToken = token;
+      window.lastSolvedToken = token;
+      const base = api.value.trim().replace(/\/+$/, '');
+      if (!base) { status('set a backend URL', 'bad'); done(); return; }
+      const linkedin_url = document.getElementById('linkedin_url').value.trim();
+      status('token issued, sending request to live backend…');
+
+      let targetUrl;
+      let bodyData;
+
+      if (base.includes('/verify')) {
+        targetUrl = base;
+        bodyData = { token: token, linkedin_url: linkedin_url };
+      } else if (base.includes('/api/email-finder/linkedin')) {
+        targetUrl = base + (base.includes('?') ? '&' : '?') + 'cf-turnstile-response=' + encodeURIComponent(token);
+        bodyData = { linkedin_url: linkedin_url };
+      } else {
+        targetUrl = base + '/api/email-finder/linkedin?cf-turnstile-response=' + encodeURIComponent(token);
+        bodyData = { linkedin_url: linkedin_url };
+      }
+
+      try {
+        const res = await fetch(targetUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(bodyData)
+        });
+        const data = await res.json();
+        window.apiResponse = data;
+        $('out').hidden = false;
+        const isOk = data.ok || data.success || data.found;
+        $('verdict').textContent = isOk ? 'Success / Live Response Received' : 'Request Failed';
+        $('verdict').className = 'verdict ' + (isOk ? 'ok' : 'bad');
+        $('raw').textContent = JSON.stringify(data, null, 2);
+        status(isOk ? 'request completed' : 'request failed', isOk ? 'ok' : 'bad');
+      } catch (err) {
+        window.apiResponse = { error: String(err) };
+        $('out').hidden = false;
+        $('verdict').textContent = 'Backend unreachable';
+        $('verdict').className = 'verdict bad';
+        $('raw').textContent = String(err) + '\n\nCould not reach ' + targetUrl;
+        status('request failed', 'bad');
+      } finally {
+        done();
+      }
+    }
   </script>
-  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad&render=explicit" async defer></script>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad&render=explicit" async
+    defer></script>
 </body>
+
 </html>
