@@ -2,10 +2,8 @@ import os
 import time
 import asyncio
 import json
-import ssl
-import urllib.request
-import urllib.error
 from apify import Actor
+from curl_cffi import requests
 from src.solver import TurnstileSolver
 
 async def main():
@@ -23,7 +21,7 @@ async def main():
         # Configure Apify Residential Proxy with Sticky Session ID (to match Turnstile solver IP with API IP)
         proxy_url = os.environ.get("PROXY_URL")
         proxy_config_input = actor_input.get("proxyConfiguration")
-        session_id = f"lead_{int(time.time()*1000)}"
+        session_id = f"lead{int(time.time()*1000)}"
         try:
             if proxy_config_input:
                 proxy_configuration = await Actor.create_proxy_configuration(
@@ -58,37 +56,36 @@ async def main():
 
         Actor.log.info(f"Turnstile token acquired successfully: {token[:25]}...")
 
-        # Query Mailmeteor Live Email Finder API
+        # Query Mailmeteor Live Email Finder API with Chrome TLS impersonation
         api_url = f"https://tools.mailmeteor.com/api/email-finder/linkedin?cf-turnstile-response={token}"
         payload = {
             "linkedin_url": linkedin_url,
             "cf-turnstile-response": token,
             "token": token
         }
-        post_data = json.dumps(payload).encode("utf-8")
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
             "Origin": "https://mailmeteor.com",
             "Referer": "https://mailmeteor.com/email-finder/linkedin"
         }
 
-        req = urllib.request.Request(api_url, data=post_data, headers=headers)
-        ssl_unverified = ssl._create_unverified_context()
-
-        if proxy_url:
-            proxy_handler = urllib.request.ProxyHandler({'http': proxy_url, 'https': proxy_url})
-            opener = urllib.request.build_opener(proxy_handler, urllib.request.HTTPSHandler(context=ssl_unverified))
-        else:
-            opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ssl_unverified))
-
         try:
-            Actor.log.info("Sending request to Mailmeteor API...")
-            with opener.open(req, timeout=20) as resp:
-                resp_bytes = resp.read()
-                result = json.loads(resp_bytes.decode("utf-8"))
-                
+            Actor.log.info("Sending request to Mailmeteor API via curl_cffi Chrome TLS...")
+            proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
+            
+            response = requests.post(
+                api_url,
+                json=payload,
+                headers=headers,
+                proxies=proxies,
+                timeout=25,
+                impersonate="chrome124"
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
                 output = {
                     "linkedin_url": linkedin_url,
                     "found": result.get("found", False),
@@ -100,32 +97,29 @@ async def main():
                     "full_name": result.get("full_name"),
                     "raw": result
                 }
-                
                 Actor.log.info(f"API result received: Found={output['found']}, Email={output['email']}")
                 await Actor.push_data(output)
                 await Actor.set_value("OUTPUT", output)
-
-        except urllib.error.HTTPError as e:
-            err_body = e.read().decode("utf-8") if e.fp else ""
-            Actor.log.error(f"Mailmeteor API returned HTTP {e.code}: {err_body}")
-            try:
-                err_json = json.loads(err_body)
-            except Exception:
-                err_json = {"raw": err_body}
-            
-            output = {
-                "linkedin_url": linkedin_url,
-                "found": False,
-                "http_status": e.code,
-                "error": err_json.get("code", "http_error"),
-                "message": err_json.get("message", "API request failed.")
-            }
-            await Actor.push_data(output)
-            await Actor.set_value("OUTPUT", output)
-            if e.code == 429:
-                await Actor.fail(status_message="Mailmeteor rate limit reached. Retry in a few minutes.")
             else:
-                await Actor.fail(status_message=f"Mailmeteor API error {e.code}")
+                Actor.log.error(f"Mailmeteor API returned HTTP {response.status_code}: {response.text}")
+                try:
+                    err_json = response.json()
+                except Exception:
+                    err_json = {"raw": response.text}
+                
+                output = {
+                    "linkedin_url": linkedin_url,
+                    "found": False,
+                    "http_status": response.status_code,
+                    "error": err_json.get("code", "http_error"),
+                    "message": err_json.get("message", "API request failed.")
+                }
+                await Actor.push_data(output)
+                await Actor.set_value("OUTPUT", output)
+                if response.status_code == 429:
+                    await Actor.fail(status_message="Mailmeteor rate limit reached. Retry in a few minutes.")
+                else:
+                    await Actor.fail(status_message=f"Mailmeteor API error {response.status_code}")
 
         except Exception as err:
             Actor.log.error(f"Request failed: {err}")
