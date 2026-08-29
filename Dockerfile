@@ -4,7 +4,8 @@ FROM apify/actor-python-playwright:3.11
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Playwright browser binaries and dependencies
+# Install patchright and playwright browser binaries
+RUN patchright install chromium || true
 RUN playwright install chromium --with-deps
 
 # Copy project files
