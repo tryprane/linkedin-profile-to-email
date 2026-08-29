@@ -78,6 +78,16 @@ class TurnstileSolver:
                 '--disk-cache-size=104857600',
                 '--ignore-certificate-errors',
                 '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--disable-software-rasterizer',
+                '--disable-background-networking',
+                '--disable-default-apps',
+                '--disable-sync',
+                '--no-first-run',
+                '--mute-audio',
+                '--blink-settings=imagesEnabled=false',
             ]
 
             fetch_kwargs = {
