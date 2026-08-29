@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import asyncio
 import json
@@ -8,17 +9,59 @@ import urllib.error
 from apify import Actor
 from src.solver import TurnstileSolver
 
+def validate_and_normalize_linkedin_url(url: str) -> tuple[bool, str, str]:
+    """
+    Validates and normalizes a LinkedIn profile URL.
+    Returns: (is_valid, normalized_url, error_message)
+    """
+    if not url or not isinstance(url, str):
+        return False, "", "The 'linkedin_url' input is required."
+    
+    clean_url = url.strip()
+    
+    # Prepend https:// if protocol is omitted
+    if clean_url.startswith("www.linkedin.com") or clean_url.startswith("linkedin.com"):
+        clean_url = "https://" + clean_url
+    elif not clean_url.startswith("http://") and not clean_url.startswith("https://"):
+        if "/" not in clean_url and not clean_url.startswith("http"):
+            # Handle bare username or vanity handle (e.g. 'satyanadella')
+            clean_url = f"https://www.linkedin.com/in/{clean_url}"
+        else:
+            clean_url = "https://" + clean_url
+
+    # Regex validation for LinkedIn profile URLs
+    linkedin_pattern = re.compile(
+        r"^https?://(www\.)?linkedin\.com/in/([a-zA-Z0-9_-]+(?:%[0-9a-fA-F]{2})*)/?(\?.*)?$",
+        re.IGNORECASE
+    )
+    
+    match = linkedin_pattern.match(clean_url)
+    if not match:
+        return False, clean_url, "Invalid LinkedIn profile URL format. Expected: https://www.linkedin.com/in/username"
+    
+    username = match.group(2)
+    normalized = f"https://www.linkedin.com/in/{username}"
+    return True, normalized, ""
+
 async def main():
     async with Actor:
         actor_input = await Actor.get_input() or {}
-        linkedin_url = actor_input.get("linkedin_url", "").strip()
+        raw_url = actor_input.get("linkedin_url", "")
 
-        if not linkedin_url:
-            Actor.log.error("Missing 'linkedin_url' in actor input.")
-            await Actor.fail(status_message="Missing required field 'linkedin_url'.")
+        # Input Validation
+        is_valid, linkedin_url, err_msg = validate_and_normalize_linkedin_url(raw_url)
+        if not is_valid:
+            Actor.log.error(f"Input validation error: {err_msg} (Received: '{raw_url}')")
+            await Actor.push_data({
+                "raw_input": raw_url,
+                "found": False,
+                "error": "invalid_input",
+                "message": err_msg
+            })
+            await Actor.fail(status_message=err_msg)
             return
 
-        Actor.log.info(f"Starting Email Finder for: {linkedin_url}")
+        Actor.log.info(f"Starting Email Finder for validated LinkedIn profile: {linkedin_url}")
 
         # Configure Apify Residential Proxy for API querying
         proxy_url = os.environ.get("PROXY_URL")
@@ -34,7 +77,7 @@ async def main():
                 )
             if proxy_configuration:
                 proxy_url = await proxy_configuration.new_url()
-                Actor.log.info("Using Apify Residential Proxy for API call.")
+                Actor.log.info("Using Apify Residential Proxy for API query.")
         except Exception as e:
             if not proxy_url:
                 Actor.log.warning(f"Could not initialize Apify Proxy: {e}. Falling back to direct connection.")
