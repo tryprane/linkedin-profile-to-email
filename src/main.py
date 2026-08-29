@@ -4,6 +4,7 @@ import asyncio
 import json
 from apify import Actor
 from curl_cffi import requests
+from scrapling.fetchers import StealthyFetcher
 from src.solver import TurnstileSolver
 
 async def main():
@@ -38,12 +39,13 @@ async def main():
             if not proxy_url:
                 Actor.log.warning(f"Could not initialize Apify Proxy: {e}. Falling back to direct connection.")
 
-        # Check public IP via proxy
+        # Check public IP via proxy for both Scrapling and requests client
         if proxy_url:
             try:
                 proxies = {"http": proxy_url, "https": proxy_url}
-                ip_check = requests.get("https://api.ipify.org?format=json", proxies=proxies, timeout=10, impersonate="chrome124")
-                Actor.log.info(f"Exit IP via Apify Proxy: {ip_check.json().get('ip')}")
+                api_ip = requests.get("https://api.ipify.org?format=json", proxies=proxies, timeout=10, impersonate="chrome124").json().get("ip")
+                browser_ip = StealthyFetcher.fetch("https://api.ipify.org?format=json", proxy=proxy_url, headless=True).json().get("ip")
+                Actor.log.info(f"🔍 IP Verification -> Browser IP: {browser_ip} | API Client IP: {api_ip}")
             except Exception as e:
                 Actor.log.warning(f"IP check error: {e}")
 
