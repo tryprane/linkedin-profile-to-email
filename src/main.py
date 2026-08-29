@@ -36,10 +36,10 @@ async def main():
             if not proxy_url:
                 Actor.log.warning(f"Could not initialize Apify Proxy: {e}. Falling back to direct connection.")
 
-        # Solve Turnstile token with matching proxy IP
-        Actor.log.info("Solving Cloudflare Turnstile challenge...")
+        # Solve Turnstile token with matching proxy IP using Scrapling
+        Actor.log.info("Solving Cloudflare Turnstile challenge via Scrapling...")
         solver = TurnstileSolver()
-        token = await solver.solve_async(proxy_url=proxy_url, timeout=30)
+        token = await asyncio.to_thread(solver.solve, proxy_url=proxy_url, timeout=30)
 
         if not token:
             Actor.log.error("Failed to solve Cloudflare Turnstile token.")

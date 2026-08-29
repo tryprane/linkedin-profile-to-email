@@ -1,14 +1,20 @@
 FROM apify/actor-python-playwright:3.11
 
-# Copy requirements and install dependencies
+# Upgrade build tools
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+
+# Install dependencies
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy project files
+# Install Scrapling stealth browser binaries
+RUN scrapling install || (patchright install chromium && playwright install chromium --with-deps)
+
+# Copy application files
 COPY . ./
 
-# Set environment variables
+# Environment configuration
 ENV PYTHONUNBUFFERED=1
 
-# Command to run the Actor
+# Command to execute Actor
 CMD ["python3", "-m", "src.main"]
