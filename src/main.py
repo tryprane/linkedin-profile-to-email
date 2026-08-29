@@ -125,9 +125,13 @@ async def main():
             opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ssl_unverified))
 
         try:
-            Actor.log.info("Sending request to Mailmeteor API...")
+            Actor.log.info(f"Sending request to Mailmeteor API (Payload: {len(post_data)} bytes)...")
+            start_req = time.time()
             with opener.open(req, timeout=25) as resp:
                 resp_bytes = resp.read()
+                latency = time.time() - start_req
+                total_bytes = len(post_data) + len(resp_bytes)
+                Actor.log.info(f"Proxy API transfer completed in {latency:.2f}s (Sent: {len(post_data)} B, Received: {len(resp_bytes)} B, Total: {total_bytes} B)")
                 result = json.loads(resp_bytes.decode("utf-8"))
                 
                 output = {
@@ -139,6 +143,8 @@ async def main():
                     "job_title": result.get("job_title"),
                     "company": result.get("company"),
                     "full_name": result.get("full_name"),
+                    "proxy_used": bool(proxy_url),
+                    "proxy_transfer_bytes": total_bytes,
                     "raw": result
                 }
                 
