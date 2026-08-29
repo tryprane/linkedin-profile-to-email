@@ -89,7 +89,22 @@ class TurnstileSolver:
                 "timeout": timeout * 1000
             }
             if proxy_url:
-                fetch_kwargs["proxy"] = proxy_url
+                bypass_list = f"127.0.0.1,localhost,tools.mailmeteor.com,tools.mailmeteor.com:{self.port}"
+                if "@" in proxy_url:
+                    auth_part, host_part = proxy_url.replace("http://", "").replace("https://", "").split("@")
+                    user, pwd = auth_part.split(":")
+                    server = f"http://{host_part}"
+                    fetch_kwargs["proxy"] = {
+                        "server": server,
+                        "username": user,
+                        "password": pwd,
+                        "bypass": bypass_list
+                    }
+                else:
+                    fetch_kwargs["proxy"] = {
+                        "server": proxy_url,
+                        "bypass": bypass_list
+                    }
 
             StealthyFetcher.fetch(
                 f'https://tools.mailmeteor.com:{self.port}',
