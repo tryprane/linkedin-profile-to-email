@@ -40,22 +40,21 @@ class TurnstileSolver:
         def on_page_ready(page):
             nonlocal solved_token
             try:
-                # Wait for Turnstile to initialize and load
-                page.wait_for_function("document.getElementById('wstat') && document.getElementById('wstat').textContent.includes('ready')", timeout=10000)
-                
-                # Wait for the token callback
+                # Wait directly for the solved token (Scrapling auto-solve or callback)
                 page.wait_for_function("""() => Boolean(
                     (document.getElementById('widget') && document.getElementById('widget').getAttribute('data-token')) ||
                     (document.querySelector('[name="cf-turnstile-response"]') && document.querySelector('[name="cf-turnstile-response"]').value) ||
                     window.__solved_token__ ||
-                    window.turnstileToken
+                    window.turnstileToken ||
+                    (window.turnstile && typeof widgetId !== 'undefined' && window.turnstile.getResponse(widgetId))
                 )""", timeout=20000)
 
                 solved_token = page.evaluate("""() => (
                     (document.getElementById('widget') && document.getElementById('widget').getAttribute('data-token')) ||
                     (document.querySelector('[name="cf-turnstile-response"]') && document.querySelector('[name="cf-turnstile-response"]').value) ||
                     window.__solved_token__ ||
-                    window.turnstileToken
+                    window.turnstileToken ||
+                    (window.turnstile && typeof widgetId !== 'undefined' ? window.turnstile.getResponse(widgetId) : null)
                 )""")
             except Exception as e:
                 print(f"[solver] Error during page action: {e}")
