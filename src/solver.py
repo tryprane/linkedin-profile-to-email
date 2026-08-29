@@ -35,7 +35,7 @@ class TurnstileSolver:
             self.server.shutdown()
             print("[solver] Embedded HTTPS server stopped.")
 
-    def solve(self, linkedin_url="", timeout=30):
+    def solve(self, linkedin_url="", proxy_url=None, timeout=35):
         self.start_local_server()
         solved_token = None
 
@@ -70,21 +70,31 @@ class TurnstileSolver:
                 print(f"[solver] Error during page action: {e}")
 
         try:
-            print("[solver] Launching Scrapling StealthyFetcher to solve Turnstile challenge...")
+            print(f"[solver] Launching Scrapling StealthyFetcher (Proxy: {'Enabled' if proxy_url else 'Direct'})...")
+            fetch_args = [
+                f'--host-resolver-rules=MAP tools.mailmeteor.com 127.0.0.1:{self.port}, EXCLUDE challenges.cloudflare.com',
+                f'--proxy-bypass-list=127.0.0.1;localhost;tools.mailmeteor.com;tools.mailmeteor.com:{self.port}',
+                f'--disk-cache-dir={self.cache_dir}',
+                '--disk-cache-size=104857600',
+                '--ignore-certificate-errors',
+                '--no-sandbox',
+            ]
+
+            fetch_kwargs = {
+                "google_search": False,
+                "additional_args": {
+                    "args": fetch_args
+                },
+                "page_action": on_page_ready,
+                "timeout": timeout * 1000
+            }
+
+            if proxy_url:
+                fetch_kwargs["proxy"] = proxy_url
+
             StealthyFetcher.fetch(
                 f'https://tools.mailmeteor.com:{self.port}',
-                google_search=False,
-                additional_args={
-                    'args': [
-                        f'--host-resolver-rules=MAP tools.mailmeteor.com 127.0.0.1:{self.port}, EXCLUDE challenges.cloudflare.com',
-                        f'--disk-cache-dir={self.cache_dir}',
-                        '--disk-cache-size=104857600',
-                        '--ignore-certificate-errors',
-                        '--no-sandbox',
-                    ]
-                },
-                page_action=on_page_ready,
-                timeout=timeout * 1000
+                **fetch_kwargs
             )
         except Exception as err:
             print(f"[solver] Fetcher error: {err}")

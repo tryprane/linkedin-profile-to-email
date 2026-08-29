@@ -82,10 +82,10 @@ async def main():
             if not proxy_url:
                 Actor.log.warning(f"Could not initialize Apify Proxy: {e}. Falling back to direct connection.")
 
-        # Solve Turnstile token using Scrapling StealthyFetcher
-        Actor.log.info("Solving Cloudflare Turnstile challenge via Scrapling...")
+        # Solve Turnstile token using Scrapling StealthyFetcher (using proxy if configured)
+        Actor.log.info(f"Solving Cloudflare Turnstile challenge via Scrapling (Proxy: {'Enabled' if proxy_url else 'Direct'})...")
         solver = TurnstileSolver()
-        token = await asyncio.to_thread(solver.solve, linkedin_url=linkedin_url, timeout=35)
+        token = await asyncio.to_thread(solver.solve, linkedin_url=linkedin_url, proxy_url=proxy_url, timeout=35)
 
         if not token:
             Actor.log.error("Failed to solve Cloudflare Turnstile token.")
