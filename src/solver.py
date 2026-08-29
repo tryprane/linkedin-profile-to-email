@@ -87,7 +87,6 @@ class TurnstileSolver:
                 '--disable-sync',
                 '--no-first-run',
                 '--mute-audio',
-                '--blink-settings=imagesEnabled=false',
             ]
 
             fetch_kwargs = {
