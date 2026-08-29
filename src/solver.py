@@ -66,12 +66,6 @@ class TurnstileSolver:
                     window.lastSolvedToken ||
                     (window.turnstile && typeof widgetId !== 'undefined' ? window.turnstile.getResponse(widgetId) : null)
                 )""")
-
-                # Fast exit: close page immediately to release resources and cut container runtime
-                try:
-                    page.close()
-                except Exception:
-                    pass
             except Exception as e:
                 print(f"[solver] Error during page action: {e}")
 
