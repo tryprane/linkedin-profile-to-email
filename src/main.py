@@ -38,6 +38,15 @@ async def main():
             if not proxy_url:
                 Actor.log.warning(f"Could not initialize Apify Proxy: {e}. Falling back to direct connection.")
 
+        # Check public IP via proxy
+        if proxy_url:
+            try:
+                proxies = {"http": proxy_url, "https": proxy_url}
+                ip_check = requests.get("https://api.ipify.org?format=json", proxies=proxies, timeout=10, impersonate="chrome124")
+                Actor.log.info(f"Exit IP via Apify Proxy: {ip_check.json().get('ip')}")
+            except Exception as e:
+                Actor.log.warning(f"IP check error: {e}")
+
         # Solve Turnstile token with matching proxy IP using Scrapling
         Actor.log.info("Solving Cloudflare Turnstile challenge via Scrapling...")
         solver = TurnstileSolver()
