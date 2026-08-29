@@ -1,0 +1,25 @@
+{
+  "title": "Mailmeteor LinkedIn Email Finder Input",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "linkedin_url": {
+      "title": "LinkedIn Profile URL",
+      "type": "string",
+      "description": "The target LinkedIn profile URL (e.g. https://www.linkedin.com/in/satyanadella)",
+      "editor": "textfield",
+      "prefill": "https://www.linkedin.com/in/satyanadella"
+    },
+    "proxyConfiguration": {
+      "title": "Proxy configuration",
+      "type": "object",
+      "editor": "proxy",
+      "description": "Select Apify residential proxy for Mailmeteor API querying.",
+      "default": {
+        "useApifyProxy": true,
+        "apifyProxyGroups": ["RESIDENTIAL"]
+      }
+    }
+  },
+  "required": ["linkedin_url"]
+}

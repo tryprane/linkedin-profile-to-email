@@ -1,0 +1,12 @@
+{
+  "actorSpecification": 1,
+  "name": "linkedin-profile-to-email",
+  "title": "LinkedIn Profile to Mail",
+  "description": "Find verified email addresses directly from LinkedIn profile URLs with automated Turnstile solving.",
+  "version": "1.0",
+  "meta": {
+    "templateId": "python-playwright"
+  },
+  "dockerfilePath": "Dockerfile",
+  "input": "./.actor/input_schema.json"
+}

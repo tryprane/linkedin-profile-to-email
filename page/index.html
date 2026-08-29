@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Turnstile Solver</title>
+</head>
+<body style="font-family: sans-serif; padding: 20px;">
+  <div id="wstat">initializing...</div>
+  <div id="widget"></div>
+
+  <script>
+    window.turnstileToken = null;
+    window.__solved_token__ = null;
+
+    const CONFIG = {
+      sitekey: '0x4AAAAAAAe7i7oicz-TnMTr',
+      action: 'emailfinderlinkedin'
+    };
+
+    let widgetId = null;
+
+    function status(text) {
+      const el = document.getElementById('wstat');
+      if (el) el.textContent = text;
+      console.log('[Turnstile Status]', text);
+    }
+
+    window.onTurnstileLoad = () => {
+      console.log('[onTurnstileLoad] sitekey:', CONFIG.sitekey, 'action:', CONFIG.action);
+      status('ready');
+      try {
+        widgetId = turnstile.render('#widget', {
+          sitekey: CONFIG.sitekey,
+          action: CONFIG.action,
+          theme: 'light',
+          callback: (token) => {
+            console.log('[Turnstile Callback] Token acquired:', token.substring(0, 25) + '...');
+            window.__solved_token__ = token;
+            window.turnstileToken = token;
+            const w = document.getElementById('widget');
+            if (w) w.setAttribute('data-token', token);
+            status('token acquired');
+          },
+          'expired-callback': () => {
+            console.log('[Turnstile Expired]');
+            status('token expired');
+          },
+          'error-callback': (code) => {
+            console.error('[Turnstile Error Callback] Code:', code);
+            status('error ' + code);
+            return true;
+          }
+        });
+      } catch (err) {
+        console.error('[Turnstile Render Error]', err);
+      }
+    };
+  </script>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad&render=explicit" async defer></script>
+</body>
+</html>

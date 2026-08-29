@@ -1,0 +1,12 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+.chrome_cache/
+
+# Apify local storage
+storage/
+
+# Environment / local configs
+.env
+.DS_Store
