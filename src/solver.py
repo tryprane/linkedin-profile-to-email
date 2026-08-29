@@ -82,6 +82,7 @@ class TurnstileSolver:
 
             fetch_kwargs = {
                 "google_search": False,
+                "network_idle": False,
                 "additional_args": {
                     "args": fetch_args
                 },
