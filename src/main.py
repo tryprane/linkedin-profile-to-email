@@ -39,7 +39,7 @@ async def main():
         # Solve Turnstile token with matching proxy IP
         Actor.log.info("Solving Cloudflare Turnstile challenge...")
         solver = TurnstileSolver()
-        token = await asyncio.to_thread(solver.solve, proxy_url=proxy_url, timeout=30)
+        token = await solver.solve_async(proxy_url=proxy_url, timeout=30)
 
         if not token:
             Actor.log.error("Failed to solve Cloudflare Turnstile token.")
