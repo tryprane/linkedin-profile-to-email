@@ -8,5 +8,5 @@
     "templateId": "python-playwright"
   },
   "dockerfilePath": "Dockerfile",
-  "input": "./.actor/input_schema.json"
+  "input": "./input_schema.json"
 }
