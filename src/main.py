@@ -19,19 +19,22 @@ async def main():
 
         Actor.log.info(f"Starting Email Finder for: {linkedin_url}")
 
-        # Configure Apify Residential Proxy for the Mailmeteor API call
+        # Configure Apify Residential Proxy with Sticky Session ID (to match Turnstile solver IP with API IP)
         proxy_url = os.environ.get("PROXY_URL")
         proxy_config_input = actor_input.get("proxyConfiguration")
+        session_id = f"lead_{int(time.time()*1000)}"
         try:
             if proxy_config_input:
-                proxy_configuration = await Actor.create_proxy_configuration(proxy_config_input)
+                proxy_configuration = await Actor.create_proxy_configuration(
+                    actor_proxy_input=proxy_config_input
+                )
             else:
                 proxy_configuration = await Actor.create_proxy_configuration(
                     groups=["RESIDENTIAL"]
                 )
             if proxy_configuration:
-                proxy_url = await proxy_configuration.new_url()
-                Actor.log.info("Using Apify Proxy for session.")
+                proxy_url = await proxy_configuration.new_url(session_id=session_id)
+                Actor.log.info(f"Using Apify Residential Proxy with sticky session: {session_id}")
         except Exception as e:
             if not proxy_url:
                 Actor.log.warning(f"Could not initialize Apify Proxy: {e}. Falling back to direct connection.")
