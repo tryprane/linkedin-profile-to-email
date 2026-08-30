@@ -1,0 +1,10 @@
+.git
+.agents
+.codex
+.chrome_cache
+storage
+__pycache__
+*.py[cod]
+*.har
+.env
+.DS_Store

@@ -19,6 +19,12 @@
         "useApifyProxy": true,
         "apifyProxyGroups": ["RESIDENTIAL"]
       }
+    },
+    "proxyChallenge": {
+      "title": "Proxy the Turnstile challenge",
+      "type": "boolean",
+      "description": "Enable only if Mailmeteor rejects tokens minted from a different IP. This sends the much larger browser challenge through the proxy.",
+      "default": false
     }
   },
   "required": ["linkedin_url"]

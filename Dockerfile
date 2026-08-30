@@ -1,14 +1,11 @@
 FROM apify/actor-python-playwright:3.11
 
-# Upgrade build tools
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel
-
 # Install dependencies
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Scrapling stealth browser binaries
-RUN scrapling install || (patchright install chromium && playwright install chromium --with-deps)
+# Install the browser build used by Scrapling.
+RUN scrapling install
 
 # Copy application files
 COPY . ./
