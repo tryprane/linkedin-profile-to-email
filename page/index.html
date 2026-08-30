@@ -9,18 +9,32 @@
   <div id="widget"></div>
   <script>
     window.__solved_token__ = null;
+    window.turnstileToken = null;
+    window.lastSolvedToken = null;
 
     window.onTurnstileLoad = () => {
       const widgetId = turnstile.render('#widget', {
         sitekey: '0x4AAAAAAAe7i7oicz-TnMTr',
         action: 'emailfinderlinkedin',
-        execution: 'execute',
+        theme: 'light',
         callback: (token) => {
           window.__solved_token__ = token;
-          document.getElementById('widget').setAttribute('data-token', token);
+          window.turnstileToken = token;
+          window.lastSolvedToken = token;
+          const w = document.getElementById('widget');
+          if (w) w.setAttribute('data-token', token);
+        },
+        'expired-callback': () => {
+          window.__solved_token__ = null;
+        },
+        'error-callback': (code) => {
+          console.error('[Turnstile Error]', code);
+          return true;
         }
       });
-      turnstile.execute(widgetId);
+      try {
+        turnstile.execute(widgetId);
+      } catch (e) {}
     };
   </script>
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad&render=explicit" async defer></script>
