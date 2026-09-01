@@ -6,7 +6,7 @@
       "type": "string",
       "title": "Extracted Lead Results",
       "description": "Dataset containing verified email addresses and contact information.",
-      "template": "{{links.apiDefaultDatasetUrl}}/items?clean=true&format=json"
+      "template": "{{links.apiDefaultDatasetUrl}}/items"
     },
     "overview": {
       "type": "string",
