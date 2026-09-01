@@ -1,43 +1,18 @@
 {
   "actorOutputSchemaVersion": 1,
-  "title": "LinkedIn Profile to Email Output",
-  "description": "Output schema containing verified business email, contact name, job title, and company extracted from LinkedIn.",
-  "type": "object",
+  "title": "LinkedIn Profile to Verified Email Output",
   "properties": {
-    "linkedin_url": {
+    "results": {
       "type": "string",
-      "title": "LinkedIn Profile URL",
-      "description": "The queried LinkedIn profile URL."
+      "title": "Extracted Lead Results",
+      "description": "Dataset containing verified email addresses and contact information.",
+      "template": "{{links.apiDefaultDatasetUrl}}/items?clean=true&format=json"
     },
-    "found": {
-      "type": "boolean",
-      "title": "Email Found Status",
-      "description": "Whether a verified business email was successfully extracted."
-    },
-    "email": {
+    "overview": {
       "type": "string",
-      "title": "Verified Business Email",
-      "description": "The extracted and verified business email address."
-    },
-    "full_name": {
-      "type": "string",
-      "title": "Full Name",
-      "description": "Full name of the LinkedIn profile lead."
-    },
-    "job_title": {
-      "type": "string",
-      "title": "Job Title",
-      "description": "Job title or professional headline."
-    },
-    "company": {
-      "type": "string",
-      "title": "Company Name",
-      "description": "Company or organisation name."
-    },
-    "validation": {
-      "type": "string",
-      "title": "Validation Status",
-      "description": "Email deliverability validation status (e.g. valid, unverified)."
+      "title": "Dataset Overview",
+      "description": "Direct link to the default dataset for this run.",
+      "template": "{{links.apiDefaultDatasetUrl}}"
     }
   }
 }
