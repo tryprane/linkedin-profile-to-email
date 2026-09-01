@@ -12,14 +12,13 @@ from apify import Actor
 
 from src.solver import TurnstileSolver
 
-
-MAILMETEOR_API_URL = "https://tools.mailmeteor.com/api/email-finder/linkedin"
+SERVICE_ENDPOINT = "https://tools.mailmeteor.com/api/email-finder/linkedin"
 
 
 def validate_and_normalize_linkedin_url(url: str) -> tuple[bool, str, str]:
     """Validate and normalize a single LinkedIn profile URL."""
     if not url or not isinstance(url, str):
-        return False, "", "The 'linkedin_url' input is required."
+        return False, "", "The 'linkedin_url' input parameter is required."
 
     clean_url = url.strip()
     if clean_url.startswith(("www.linkedin.com", "linkedin.com")):
@@ -46,8 +45,8 @@ def validate_and_normalize_linkedin_url(url: str) -> tuple[bool, str, str]:
 
 
 def build_api_request(linkedin_url: str, token: str) -> urllib.request.Request:
-    """Build the single lightweight request made after the browser exits."""
-    api_url = f"{MAILMETEOR_API_URL}?{urlencode({'cf-turnstile-response': token})}"
+    """Build the single lightweight email lookup request."""
+    api_url = f"{SERVICE_ENDPOINT}?{urlencode({'cf-turnstile-response': token})}"
     post_data = json.dumps(
         {"linkedin_url": linkedin_url},
         separators=(",", ":"),
@@ -62,7 +61,7 @@ def build_api_request(linkedin_url: str, token: str) -> urllib.request.Request:
     return urllib.request.Request(api_url, data=post_data, headers=headers)
 
 
-def query_mailmeteor(
+def query_email_api(
     linkedin_url: str,
     token: str,
     proxy_url: str | None,
@@ -89,7 +88,11 @@ def query_mailmeteor(
 async def main():
     async with Actor:
         actor_input = await Actor.get_input() or {}
-        raw_url = actor_input.get("linkedin_url", "")
+        raw_url = (
+            actor_input.get("linkedin_url")
+            or actor_input.get("linkedinUrl")
+            or actor_input.get("url", "")
+        )
 
         is_valid, linkedin_url, error_message = validate_and_normalize_linkedin_url(raw_url)
         if not is_valid:
@@ -109,67 +112,56 @@ async def main():
 
         Actor.log.info(f"Starting Email Finder for: {linkedin_url}")
 
-        # Reserve the proxy for the tiny API request by default. Sending the
-        # browser challenge through residential bandwidth is opt-in.
+        # Enforce Apify Residential Proxy
         proxy_url = os.environ.get("PROXY_URL")
-        proxy_config_input = actor_input.get("proxyConfiguration")
         try:
-            if proxy_config_input:
-                proxy_configuration = await Actor.create_proxy_configuration(
-                    actor_proxy_input=proxy_config_input
-                )
-            else:
-                proxy_configuration = await Actor.create_proxy_configuration(
-                    groups=["RESIDENTIAL"]
-                )
+            proxy_configuration = await Actor.create_proxy_configuration(
+                groups=["RESIDENTIAL"]
+            )
             if proxy_configuration:
                 proxy_url = await proxy_configuration.new_url()
-                Actor.log.info("Using an Apify proxy for the API request.")
+                Actor.log.info("Apify Residential Proxy initialized successfully.")
+            elif not proxy_url:
+                raise RuntimeError("Apify Proxy is mandatory for email extraction.")
         except Exception as error:
             if not proxy_url:
-                Actor.log.warning(
-                    f"Could not initialize Apify Proxy: {error}. Using a direct API connection."
-                )
+                Actor.log.error(f"Failed to initialize Apify Proxy: {error}")
+                await Actor.fail(status_message="Apify Proxy configuration is required.")
+                return
 
-        challenge_proxy_url = (
-            proxy_url if bool(actor_input.get("proxyChallenge", False)) else None
-        )
-        Actor.log.info(
-            "Solving Cloudflare Turnstile via Scrapling "
-            f"(network: {'proxy' if challenge_proxy_url else 'direct'})."
-        )
+        Actor.log.info("Resolving security verification challenge...")
         token = await asyncio.to_thread(
             TurnstileSolver().solve,
-            proxy_url=challenge_proxy_url,
+            proxy_url=None,
             timeout=25,
         )
 
         if not token:
-            Actor.log.error("Failed to solve Cloudflare Turnstile token.")
+            Actor.log.error("Failed to solve verification challenge.")
             await Actor.push_data(
                 {
                     "linkedin_url": linkedin_url,
                     "found": False,
                     "error": "turnstile_solve_failed",
-                    "message": "Could not acquire a valid Turnstile token.",
+                    "message": "Could not acquire a valid security token.",
                 }
             )
-            await Actor.fail(status_message="Turnstile challenge solve failed.")
+            await Actor.fail(status_message="Security challenge solve failed.")
             return
 
-        Actor.log.info("Turnstile token acquired successfully.")
+        Actor.log.info("Security challenge resolved successfully.")
 
         try:
-            Actor.log.info("Sending one request to the Mailmeteor API.")
+            Actor.log.info("Executing email extraction request...")
             result, transfer_bytes, latency = await asyncio.to_thread(
-                query_mailmeteor,
+                query_email_api,
                 linkedin_url,
                 token,
                 proxy_url,
             )
             Actor.log.info(
-                f"API transfer completed in {latency:.2f}s "
-                f"({transfer_bytes} request/response body bytes)."
+                f"Lookup completed in {latency:.2f}s "
+                f"({transfer_bytes} body bytes transferred)."
             )
             output = {
                 "linkedin_url": linkedin_url,
@@ -181,18 +173,17 @@ async def main():
                 "company": result.get("company"),
                 "full_name": result.get("full_name"),
                 "api_proxy_used": bool(proxy_url),
-                "challenge_proxy_used": bool(challenge_proxy_url),
                 "api_transfer_bytes": transfer_bytes,
             }
             Actor.log.info(
-                f"API result received: Found={output['found']}, Email={output['email']}"
+                f"Result: Found={output['found']}, Email={output['email']}"
             )
             await Actor.push_data(output)
             await Actor.set_value("OUTPUT", output)
 
         except urllib.error.HTTPError as error:
             error_body = error.read().decode("utf-8") if error.fp else ""
-            Actor.log.error(f"Mailmeteor API returned HTTP {error.code}: {error_body}")
+            Actor.log.error(f"API request returned HTTP {error.code}: {error_body}")
             try:
                 error_json = json.loads(error_body)
             except Exception:
@@ -209,10 +200,10 @@ async def main():
             await Actor.set_value("OUTPUT", output)
             if error.code == 429:
                 await Actor.fail(
-                    status_message="Mailmeteor rate limit reached. Retry in a few minutes."
+                    status_message="Rate limit reached. Please retry in a few moments."
                 )
             else:
-                await Actor.fail(status_message=f"Mailmeteor API error {error.code}")
+                await Actor.fail(status_message=f"Lookup API error HTTP {error.code}")
 
         except Exception as error:
             Actor.log.error(f"Request failed: {error}")

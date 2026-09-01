@@ -1,30 +1,15 @@
 {
-  "title": "Mailmeteor LinkedIn Email Finder Input",
+  "title": "LinkedIn Email Finder Input",
   "type": "object",
   "schemaVersion": 1,
   "properties": {
     "linkedin_url": {
       "title": "LinkedIn Profile URL",
       "type": "string",
-      "description": "The target LinkedIn profile URL (e.g. https://www.linkedin.com/in/satyanadella)",
+      "description": "The target LinkedIn profile URL to extract the verified email from (e.g. https://www.linkedin.com/in/satyanadella).",
       "editor": "textfield",
+      "pattern": "^https?://([a-z0-9-]+\\.)?linkedin\\.com/in/[a-zA-Z0-9_%-]+/?.*$",
       "prefill": "https://www.linkedin.com/in/satyanadella"
-    },
-    "proxyConfiguration": {
-      "title": "Proxy configuration",
-      "type": "object",
-      "editor": "proxy",
-      "description": "Select Apify residential proxy for Mailmeteor API querying.",
-      "default": {
-        "useApifyProxy": true,
-        "apifyProxyGroups": ["RESIDENTIAL"]
-      }
-    },
-    "proxyChallenge": {
-      "title": "Proxy the Turnstile challenge",
-      "type": "boolean",
-      "description": "Enable only if Mailmeteor rejects tokens minted from a different IP. This sends the much larger browser challenge through the proxy.",
-      "default": false
     }
   },
   "required": ["linkedin_url"]

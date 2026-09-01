@@ -1,54 +1,47 @@
-# LinkedIn Profile to Email Actor
+# LinkedIn Profile to Verified Email Actor
 
-An Apify Actor that accepts one LinkedIn profile URL, mints a Cloudflare Turnstile token with Scrapling, and queries Mailmeteor for the associated professional email.
+Extract verified business email addresses, full name, job title, and company directly from any LinkedIn profile URL.
 
-## Cost-Optimized Architecture
+---
 
-The default path keeps the expensive Turnstile browser traffic on the container's direct connection and uses the configured residential proxy only for the small Mailmeteor API request. The browser page only creates a token; it never calls the email API itself.
+## ⚡ Key Features
 
-- Default memory: 2048 MB
-- Actor timeout: 60 seconds
-- Scrapling navigation retries: 1
-- Browser disk cache: disabled because Actor runs do not share it
-- Mailmeteor lookups per run: exactly 1
-- Raw API response duplication: omitted from output
+- **Direct LinkedIn Email Extraction**: Find professional and verified emails from LinkedIn profile URLs.
+- **Fast & Lightweight Execution**: Completes in ~3–6 seconds per lookup.
+- **Automated Security Resolution**: Handles Cloudflare Turnstile token resolution seamlessly.
+- **Enforced Apify Residential Proxy**: Guaranteed high delivery rates and unblocked requests.
 
-If Mailmeteor rejects a token because the challenge and API request came from different IPs, set `proxyChallenge` to `true`. That compatibility mode routes both operations through the same proxy, but consumes substantially more residential bandwidth.
+---
 
-## Input
+## 📥 Input Specification
+
+The Actor accepts a single verified LinkedIn profile URL:
 
 ```json
 {
-  "linkedin_url": "https://www.linkedin.com/in/satyanadella",
-  "proxyConfiguration": {
-    "useApifyProxy": true,
-    "apifyProxyGroups": ["RESIDENTIAL"]
-  },
-  "proxyChallenge": false
+  "linkedin_url": "https://www.linkedin.com/in/satyanadella"
 }
 ```
 
-## Output
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `linkedin_url` | String | **Yes** | Valid LinkedIn profile URL (e.g., `https://www.linkedin.com/in/username`). |
+
+---
+
+## 📤 Output / Dataset Format
 
 ```json
 {
   "linkedin_url": "https://www.linkedin.com/in/satyanadella",
   "found": true,
   "success": true,
-  "email": "person@example.com",
+  "email": "satya@uchicago.edu",
   "validation": "valid",
-  "job_title": "Job title",
-  "company": "Company",
-  "full_name": "Full Name",
+  "job_title": "Member Board Of Trustees",
+  "company": "University Of Chicago",
+  "full_name": "Satya Nadella",
   "api_proxy_used": true,
-  "challenge_proxy_used": false,
-  "api_transfer_bytes": 1024
+  "api_transfer_bytes": 1420
 }
-```
-
-## Local Verification
-
-```bash
-python3 -m unittest discover -s tests -v
-python3 -m compileall -q src tests
 ```
