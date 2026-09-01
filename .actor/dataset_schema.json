@@ -1,33 +1,36 @@
 {
   "actorSpecification": 1,
   "fields": {
-    "linkedin_url": {
-      "type": "string",
-      "description": "The queried LinkedIn profile URL."
-    },
-    "found": {
-      "type": "boolean",
-      "description": "Whether a verified email address was found."
-    },
-    "email": {
-      "type": "string",
-      "description": "The verified business email address."
-    },
-    "full_name": {
-      "type": "string",
-      "description": "Full name of the LinkedIn profile lead."
-    },
-    "job_title": {
-      "type": "string",
-      "description": "Job title or professional headline."
-    },
-    "company": {
-      "type": "string",
-      "description": "Company or organisation name."
-    },
-    "validation": {
-      "type": "string",
-      "description": "Deliverability validation status (e.g. valid, unverified)."
+    "type": "object",
+    "properties": {
+      "linkedin_url": {
+        "type": "string",
+        "description": "The queried LinkedIn profile URL."
+      },
+      "found": {
+        "type": "boolean",
+        "description": "Whether a verified email address was found."
+      },
+      "email": {
+        "type": "string",
+        "description": "The verified business email address."
+      },
+      "full_name": {
+        "type": "string",
+        "description": "Full name of the LinkedIn profile lead."
+      },
+      "job_title": {
+        "type": "string",
+        "description": "Job title or professional headline."
+      },
+      "company": {
+        "type": "string",
+        "description": "Company or organisation name."
+      },
+      "validation": {
+        "type": "string",
+        "description": "Deliverability validation status."
+      }
     }
   },
   "views": {
