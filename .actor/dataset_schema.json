@@ -12,24 +12,36 @@
         "description": "Whether a verified email address was found."
       },
       "email": {
-        "type": "string",
+        "type": ["string", "null"],
         "description": "The verified business email address."
       },
       "full_name": {
-        "type": "string",
+        "type": ["string", "null"],
         "description": "Full name of the LinkedIn profile lead."
       },
       "job_title": {
-        "type": "string",
+        "type": ["string", "null"],
         "description": "Job title or professional headline."
       },
       "company": {
-        "type": "string",
+        "type": ["string", "null"],
         "description": "Company or organisation name."
       },
       "validation": {
-        "type": "string",
+        "type": ["string", "null"],
         "description": "Deliverability validation status."
+      },
+      "status": {
+        "type": ["string", "null"],
+        "description": "Status code or note."
+      },
+      "error": {
+        "type": ["string", "null"],
+        "description": "Error code if failed."
+      },
+      "message": {
+        "type": ["string", "null"],
+        "description": "Error or details message."
       }
     }
   },
@@ -61,6 +73,9 @@
           },
           "job_title": {
             "label": "Job Title"
+          },
+          "validation": {
+            "label": "Validation"
           }
         }
       }
