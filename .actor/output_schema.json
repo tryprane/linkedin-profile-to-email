@@ -1,0 +1,34 @@
+{
+  "actorSpecification": 1,
+  "type": "object",
+  "properties": {
+    "linkedin_url": {
+      "type": "string",
+      "description": "The queried LinkedIn profile URL."
+    },
+    "found": {
+      "type": "boolean",
+      "description": "True if an email was successfully extracted, False otherwise."
+    },
+    "email": {
+      "type": ["string", "null"],
+      "description": "The verified business email address."
+    },
+    "full_name": {
+      "type": ["string", "null"],
+      "description": "Full name of the profile lead."
+    },
+    "job_title": {
+      "type": ["string", "null"],
+      "description": "Job title or professional headline."
+    },
+    "company": {
+      "type": ["string", "null"],
+      "description": "Company or organisation name."
+    },
+    "validation": {
+      "type": ["string", "null"],
+      "description": "Deliverability validation status."
+    }
+  }
+}
