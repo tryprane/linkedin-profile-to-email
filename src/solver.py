@@ -1,9 +1,14 @@
+import logging
 import os
 import http.server
 import ssl
 import threading
 
 from scrapling.fetchers import StealthyFetcher
+
+# Silence third-party internal fetcher and automation logs
+for name in ("scrapling", "scrapling.fetchers", "camoufox", "playwright", "urllib3"):
+    logging.getLogger(name).setLevel(logging.ERROR)
 
 
 class QuietRequestHandler(http.server.SimpleHTTPRequestHandler):
@@ -36,7 +41,6 @@ class TurnstileSolver:
         )
         self.server_thread.daemon = True
         self.server_thread.start()
-        print(f"[solver] Embedded HTTPS server started at https://127.0.0.1:{self.port}")
 
     def stop_local_server(self):
         if self.server:
@@ -46,7 +50,6 @@ class TurnstileSolver:
         if self.server_thread:
             self.server_thread.join(timeout=1)
             self.server_thread = None
-            print("[solver] Embedded HTTPS server stopped.")
 
     def solve(self, proxy_url=None, timeout=25):
         self.start_local_server()
@@ -74,10 +77,6 @@ class TurnstileSolver:
                 print(f"[solver] Error during page action: {e}")
 
         try:
-            print(
-                "[solver] Launching Scrapling StealthyFetcher "
-                f"(Proxy: {'Enabled' if proxy_url else 'Direct'})..."
-            )
             fetch_args = [
                 f'--host-resolver-rules=MAP tools.mailmeteor.com 127.0.0.1:{self.port}, EXCLUDE challenges.cloudflare.com',
                 f'--proxy-bypass-list=127.0.0.1;localhost;tools.mailmeteor.com;tools.mailmeteor.com:{self.port}',
